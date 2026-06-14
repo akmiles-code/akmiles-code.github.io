@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graspetide Crosslink Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal:     #0D5C63;
+  --teal2:    #1C7C84;
+  --teal3:    #5DCAA5;
+  --coral:    #C24A3A;
+  --coral2:   #E07060;
+  --gold:     #B07A1E;
+  --gold2:    #D49A3A;
+  --ink:      #1F2A2E;
+  --mid:      #5A6B70;
+  --pale:     #F0F6F5;
+  --page:     #F7F8F6;
+  --white:    #FFFFFF;
+  --border:   #DDE4E3;
+  --bg-donor: #DAFAF0;
+  --bg-acc:   #FAE8E4;
+  --bg-lys:   #FEF0D7;
+  --bg-neut:  #E8EAE8;
+  --radius:   8px;
+  --font:     'IBM Plex Sans', system-ui, sans-serif;
+  --mono:     'IBM Plex Mono', 'Courier New', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body { font-family: var(--font); background: var(--page); color: var(--ink); line-height: 1.5; }
+
+/* ─── Layout ─────────────────────────────────────────────────── */
+.page-wrap { max-width: 1280px; margin: 0 auto; padding: 0 1.25rem 2rem; }
+.top-grid { display: grid; grid-template-columns: 320px 1fr; gap: 1rem; align-items: start; margin-bottom: 1rem; }
+.analysis-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+@media (max-width: 1000px) { .top-grid { grid-template-columns: 1fr; } .analysis-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .analysis-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ─── Header ─────────────────────────────────────────────────── */
+header {
+  background: var(--teal);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  display: flex; align-items: flex-start; gap: 1.5rem;
+}
+.hdr-icon { width: 42px; height: 42px; flex-shrink: 0; }
+header h1 { font-size: 1.3rem; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
+header p { font-size: .8rem; color: rgba(255,255,255,.7); margin-top: .2rem; max-width: 620px; }
+.chem-key { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .5rem; }
+.key-item { display: flex; align-items: center; gap: .3rem; font-size: .75rem; color: rgba(255,255,255,.8); }
+.key-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+/* ─── Cards ──────────────────────────────────────────────────── */
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; }
+.card-title { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem; }
+.card-title svg { flex-shrink: 0; }
+
+/* ─── Sequence input ─────────────────────────────────────────── */
+textarea#seqInput {
+  width: 100%; height: 80px;
+  font-family: var(--mono); font-size: .78rem;
+  border: 1px solid var(--border); border-radius: 5px;
+  padding: .5rem .6rem; resize: vertical; color: var(--ink);
+  background: var(--pale); outline: none; letter-spacing: .05em;
+}
+textarea#seqInput:focus { border-color: var(--teal2); }
+.preset-btns { display: flex; gap: .4rem; flex-wrap: wrap; margin: .5rem 0; }
+.preset-btn {
+  font-size: .73rem; font-family: var(--font); padding: .28rem .65rem;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--white); color: var(--teal); cursor: pointer;
+  transition: all .15s;
+}
+.preset-btn:hover { background: var(--teal); color: #fff; border-color: var(--teal); }
+.controls-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .6rem; align-items: flex-end; }
+.ctrl { display: flex; flex-direction: column; gap: .25rem; }
+.ctrl label { font-size: .72rem; color: var(--mid); font-weight: 500; }
+.ctrl input[type=range] { width: 100px; accent-color: var(--teal); }
+.ctrl input[type=number] { width: 56px; padding: .25rem .35rem; border: 1px solid var(--border); border-radius: 4px; font-family: var(--mono); font-size: .78rem; }
+.ctrl-val { font-size: .72rem; color: var(--teal); font-weight: 600; font-family: var(--mono); }
+.toggle-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .4rem; }
+.toggle { display: flex; align-items: center; gap: .35rem; font-size: .76rem; color: var(--mid); cursor: pointer; }
+.toggle input[type=checkbox] { accent-color: var(--teal); }
+
+/* ─── Sequence map ────────────────────────────────────────────── */
+.seq-wrap { position: relative; overflow-x: auto; padding-bottom: 4px; }
+.seq-svg { display: block; min-width: max-content; }
+.seq-stats { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-top: .6rem; }
+.stat-item { font-size: .76rem; color: var(--mid); }
+.stat-item strong { color: var(--ink); font-weight: 600; }
+.stat-item .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+
+/* ─── Pair list ──────────────────────────────────────────────── */
+.pairs-list { display: flex; flex-direction: column; gap: .3rem; max-height: 340px; overflow-y: auto; }
+.pair-item {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .45rem .6rem; border: 1px solid var(--border);
+  border-radius: 5px; cursor: pointer; transition: all .15s;
+  background: var(--white); position: relative;
+}
+.pair-item:hover { border-color: var(--teal2); background: var(--pale); }
+.pair-item.active { border-color: var(--teal); border-width: 1.5px; background: var(--pale); }
+.pair-item.confirmed { border-color: var(--gold); background: #FEF9ED; }
+.pair-badges { display: flex; gap: .25rem; flex-shrink: 0; }
+.badge { font-size: .69rem; font-family: var(--mono); font-weight: 500; padding: 1px 5px; border-radius: 3px; }
+.bd-ester { background: var(--bg-donor); color: var(--teal); }
+.bd-amide { background: var(--bg-lys); color: var(--gold); }
+.bd-acc   { background: var(--bg-acc);   color: var(--coral); }
+.bd-ring  { background: var(--pale); color: var(--mid); border: 1px solid var(--border); }
+.pair-score-bar { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 40px; }
+.pair-score-fill { height: 100%; background: var(--teal3); border-radius: 2px; transition: width .3s; }
+.pair-score-val { font-size: .7rem; color: var(--teal); font-weight: 600; font-family: var(--mono); flex-shrink: 0; min-width: 22px; text-align: right; }
+.pair-name { font-size: .78rem; font-family: var(--mono); font-weight: 500; color: var(--ink); flex-shrink: 0; min-width: 90px; }
+.confirm-tag { font-size: .65rem; color: var(--gold); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+
+/* ─── Topology list ──────────────────────────────────────────── */
+.topo-list { display: flex; flex-direction: column; gap: .3rem; max-height: 340px; overflow-y: auto; }
+.topo-item {
+  padding: .5rem .65rem; border: 1px solid var(--border); border-radius: 5px;
+  cursor: pointer; transition: all .15s; background: var(--white);
+}
+.topo-item:hover { border-color: var(--teal2); background: var(--pale); }
+.topo-item.active { border-color: var(--teal); border-width: 1.5px; background: var(--pale); }
+.topo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .2rem; }
+.topo-name { font-size: .76rem; font-family: var(--mono); font-weight: 500; color: var(--ink); }
+.topo-score { font-size: .76rem; font-weight: 600; color: var(--teal); font-family: var(--mono); }
+.topo-meta { font-size: .7rem; color: var(--mid); display: flex; gap: .75rem; flex-wrap: wrap; }
+.topo-tag { padding: 1px 5px; border-radius: 3px; }
+.topo-mass { color: var(--teal); font-family: var(--mono); }
+.topo-rings { color: var(--mid); }
+.topo-topo { color: var(--coral); }
+
+/* ─── ETD Panel ──────────────────────────────────────────────── */
+.etd-intro { font-size: .75rem; color: var(--mid); margin-bottom: .6rem; line-height: 1.5; }
+.ion-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 3px; }
+.ion-cell {
+  padding: 3px 4px; border-radius: 4px; border: 1px solid var(--border);
+  text-align: center; transition: all .1s;
+}
+.ion-cell .ion-lbl { font-size: .7rem; font-weight: 600; font-family: var(--mono); }
+.ion-cell .ion-mass { font-size: .65rem; font-family: var(--mono); opacity: .8; }
+.ic-normal { background: var(--white); }
+.ic-cyclic { background: var(--bg-donor); border-color: var(--teal2); }
+.ic-cyclic .ion-lbl { color: var(--teal); }
+.ic-absent { background: var(--pale); opacity: .35; }
+.ic-cyclic2 { background: var(--bg-acc); border-color: var(--coral2); }
+.ic-cyclic2 .ion-lbl { color: var(--coral); }
+.etd-key { display: flex; gap: .75rem; flex-wrap: wrap; font-size: .71rem; margin: .5rem 0; }
+.etd-key-item { display: flex; align-items: center; gap: .3rem; color: var(--mid); }
+.etd-key-dot { width: 10px; height: 10px; border-radius: 3px; }
+.mass-panel { margin-top: .65rem; padding: .5rem .65rem; background: var(--pale); border-radius: 5px; border: 1px solid var(--border); }
+.mass-row { display: flex; justify-content: space-between; font-size: .75rem; padding: .15rem 0; }
+.mass-label { color: var(--mid); }
+.mass-val { font-family: var(--mono); font-weight: 600; color: var(--teal); }
+
+/* ─── Confirmed crosslinks input ─────────────────────────────── */
+.confirm-input-row { display: flex; gap: .4rem; align-items: center; margin-top: .5rem; flex-wrap: wrap; }
+.confirm-input-row input { font-family: var(--mono); font-size: .78rem; padding: .3rem .5rem; border: 1px solid var(--border); border-radius: 4px; width: 120px; }
+.confirm-input-row button {
+  font-size: .75rem; font-family: var(--font); padding: .3rem .65rem;
+  background: var(--gold); color: #fff; border: none; border-radius: 4px;
+  cursor: pointer; transition: background .15s;
+}
+.confirm-input-row button:hover { background: var(--gold2); }
+.confirmed-tags { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .35rem; }
+.conf-tag { font-size: .72rem; font-family: var(--mono); padding: 2px 7px; background: var(--bg-lys); border: 1px solid var(--gold2); border-radius: 3px; color: var(--gold); display: flex; align-items: center; gap: .3rem; }
+.conf-tag .rm { cursor: pointer; color: var(--coral); font-weight: 700; line-height: 1; }
+
+/* ─── Empty / info states ─────────────────────────────────────── */
+.empty-state { text-align: center; padding: 1.5rem; color: var(--mid); font-size: .8rem; }
+.filter-row { display: flex; gap: .35rem; margin-bottom: .5rem; flex-wrap: wrap; }
+.filter-btn { font-size: .71rem; padding: .22rem .55rem; border: 1px solid var(--border); border-radius: 3px; background: var(--white); color: var(--mid); cursor: pointer; transition: all .12s; }
+.filter-btn.on { background: var(--teal); color: #fff; border-color: var(--teal); }
+.export-btn {
+  font-size: .73rem; font-family: var(--font); padding: .3rem .7rem;
+  border: 1px solid var(--border); border-radius: 4px; background: var(--white);
+  color: var(--teal); cursor: pointer; transition: all .15s; margin-top: .4rem;
+}
+.export-btn:hover { background: var(--pale); }
+.note { font-size: .72rem; color: var(--mid); font-style: italic; margin-top: .4rem; line-height: 1.5; }
+footer { border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: .85rem; font-size: .72rem; color: var(--mid); line-height: 1.7; }
+footer strong { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <svg class="hdr-icon" viewBox="0 0 42 42" fill="none">
+    <circle cx="21" cy="21" r="18" stroke="rgba(255,255,255,.3)" stroke-width="2"/>
+    <circle cx="21" cy="21" r="10" stroke="rgba(255,255,255,.2)" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <circle cx="21" cy="9" r="3" fill="#9FE1CB"/>
+    <circle cx="32" cy="16" r="3" fill="#F5C4B3"/>
+    <circle cx="32" cy="27" r="3" fill="#9FE1CB"/>
+    <circle cx="21" cy="33" r="3" fill="#F5C4B3"/>
+    <circle cx="10" cy="27" r="3" fill="#9FE1CB"/>
+    <circle cx="10" cy="16" r="3" fill="#FAC775"/>
+  </svg>
+  <div>
+    <h1>Graspetide Crosslink Explorer</h1>
+    <p>Heuristic prediction of ω-ester and ω-amide crosslink topology for any graspetide precursor core peptide. Paste a sequence to explore candidate bicyclic and tricyclic scaffolds, predict ETD fragment ladders, and calculate mass shifts.</p>
+    <div class="chem-key">
+      <span class="key-item"><span class="key-dot" style="background:#9FE1CB"></span>Ser/Thr — ω-ester donor</span>
+      <span class="key-item"><span class="key-dot" style="background:#FAC775"></span>Lys — ω-amide donor</span>
+      <span class="key-item"><span class="key-dot" style="background:#F5C4B3"></span>Asp/Glu — acceptor (carboxylate)</span>
+      <span class="key-item"><span class="key-dot" style="background:#D3D1C7"></span>other residues</span>
+    </div>
+  </div>
+</header>
+
+<div class="page-wrap">
+
+  <!-- ── TOP ROW: input + sequence map ── -->
+  <div class="top-grid">
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Sequence input
+      </div>
+      <textarea id="seqInput" placeholder="Paste core peptide sequence (one-letter amino acid codes)…" spellcheck="false"></textarea>
+      <div class="preset-btns" id="presetBtns"></div>
+
+      <div class="controls-row">
+        <div class="ctrl">
+          <label>Min ring <span class="ctrl-val" id="minVal">4</span></label>
+          <input type="range" id="minRing" min="2" max="8" value="4" step="1" oninput="document.getElementById('minVal').textContent=this.value; rebuild()">
+        </div>
+        <div class="ctrl">
+          <label>Max ring <span class="ctrl-val" id="maxVal">14</span></label>
+          <input type="range" id="maxRing" min="8" max="20" value="14" step="1" oninput="document.getElementById('maxVal').textContent=this.value; rebuild()">
+        </div>
+        <div class="ctrl">
+          <label>Max crosslinks</label>
+          <select id="maxXL" onchange="rebuild()" style="font-size:.77rem;padding:.28rem .4rem;border:1px solid var(--border);border-radius:4px;background:var(--white)">
+            <option value="2" selected>2 (bicyclic)</option>
+            <option value="3">3 (tricyclic)</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <label class="toggle"><input type="checkbox" id="showAmide" checked onchange="rebuild()"> Include Lys ω-amide</label>
+        <label class="toggle"><input type="checkbox" id="showEster" checked onchange="rebuild()"> Include Ser/Thr ω-ester</label>
+        <label class="toggle"><input type="checkbox" id="reqNonCross" checked onchange="rebuild()"> Non-crossing only</label>
+      </div>
+
+      <div style="margin-top:.65rem">
+        <div class="card-title" style="margin-bottom:.3rem;font-size:.72rem">Confirmed crosslinks (fix into topology)</div>
+        <div style="font-size:.72rem;color:var(--mid);margin-bottom:.3rem">Enter as DonorPosAcceptorPos e.g. <code style="font-family:var(--mono)">K10E4</code> or <code style="font-family:var(--mono)">S18D22</code></div>
+        <div class="confirm-input-row">
+          <input type="text" id="confirmInput" placeholder="e.g. K10E4" onkeydown="if(event.key==='Enter')addConfirmed()">
+          <button onclick="addConfirmed()">Confirm</button>
+        </div>
+        <div class="confirmed-tags" id="confirmedTags"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Sequence map — click residue to highlight pairs; click topology to show arcs
+      </div>
+      <div class="seq-wrap">
+        <svg id="seqSvg" class="seq-svg" height="88"></svg>
+      </div>
+      <div class="seq-stats" id="seqStats"></div>
+    </div>
+  </div>
+
+  <!-- ── ANALYSIS GRID ── -->
+  <div class="analysis-grid">
+
+    <!-- Column 1: Pairs -->
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="5"/><circle cx="15" cy="15" r="5"/></svg>
+        Crosslink pairs
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn on" id="fb-all" onclick="setFilter('all')">All</button>
+        <button class="filter-btn" id="fb-ester" onclick="setFilter('ester')">Ester only</button>
+        <button class="filter-btn" id="fb-amide" onclick="setFilter('amide')">Amide only</button>
+      </div>
+      <div class="pairs-list" id="pairsList"><div class="empty-state">Enter a sequence to see pairs</div></div>
+      <div class="note" id="pairsNote"></div>
+      <button class="export-btn" onclick="exportPairs()">Copy pairs as TSV</button>
+    </div>
+
+    <!-- Column 2: Topologies -->
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Bicyclic / tricyclic topologies
+      </div>
+      <div class="topo-list" id="topoList"><div class="empty-state">Select pairs or enter sequence</div></div>
+      <div class="note" id="topoNote"></div>
+      <button class="export-btn" onclick="exportTopos()">Copy topologies as TSV</button>
+    </div>
+
+    <!-- Column 3: ETD prediction -->
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        ETD / EThcD c-ion prediction
+      </div>
+      <div class="etd-intro" id="etdIntro">Select a topology to predict fragment masses. Cyclic boundary ions appear at −18.011 Da from the expected linear mass. Absent ions (within-ring backbone cuts) are shown faded.</div>
+      <div class="etd-key" id="etdKey" style="display:none">
+        <span class="etd-key-item"><span class="etd-key-dot" style="background:var(--bg-donor);border:1px solid var(--teal2)"></span>cyclic boundary (−18 Da)</span>
+        <span class="etd-key-item"><span class="etd-key-dot" style="background:var(--bg-acc);border:1px solid var(--coral2)"></span>cyclic boundary (ring 2)</span>
+        <span class="etd-key-item"><span class="etd-key-dot" style="background:var(--pale);opacity:.5"></span>absent (within ring)</span>
+      </div>
+      <div class="ion-grid" id="ionGrid"></div>
+      <div class="mass-panel" id="massPanel" style="display:none"></div>
+    </div>
+
+  </div>
+
+  <footer>
+    <strong>Chemistry rules:</strong> ω-ester crosslinks form between Ser/Thr (hydroxyl nucleophile) and Asp/Glu (carboxylate electrophile, ATP-grasp activated), loss of H₂O = −18.011 Da each. ω-amide (lactam) crosslinks form between Lys ε-amine and Asp/Glu, also −18.011 Da. Topology constraints: non-crossing (rings may be sequential or nested, not interleaved); each residue used at most once. Scoring is heuristic based on ring size, sequence position, and local context — not a structural prediction. ETD fragment masses are monoisotopic. Cyclic boundary ions appear at the c-ion where both crosslinked residues first appear in the same N-terminal fragment (ring closed = −18.011 Da shift).
+  </footer>
+</div>
+
+<script>
+'use strict';
+
+// ── Monoisotopic residue masses ─────────────────────────────────────────────
+const MONO = {
+  G:57.02146, A:71.03711, V:99.06841, L:113.08406, I:113.08406,
+  P:97.05276, F:147.06841, W:186.07931, M:131.04049, S:87.03203,
+  T:101.04768, C:103.00919, Y:163.06333, H:137.05891, D:115.02694,
+  E:129.04259, N:114.04293, Q:128.05858, K:128.09496, R:156.10111,
+};
+const H2O = 18.01056;
+const ESTER_DONORS = new Set(['S','T']);
+const AMIDE_DONORS = new Set(['K']);
+const ACCEPTORS    = new Set(['D','E']);
+
+// ── Presets ─────────────────────────────────────────────────────────────────
+const PRESETS = [
+  { label: 'Pg Type 1 (this study)', seq: 'TQNEASDLSKTQGDSTHSSSSDSDANTQDSDGPAHNETQTQLNWV', confirmed: ['K10E4'] },
+  { label: 'Microviridin-like demo', seq: 'TQKESDSTEPQDSTFN', confirmed: [] },
+  { label: 'Clear', seq: '', confirmed: [] },
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+let state = {
+  seq: '',
+  pairs: [],
+  topologies: [],
+  confirmed: [],       // [{d, a, daa, aaa}]
+  filter: 'all',
+  selPair: null,
+  selTopo: null,
+};
+
+// ── Chemistry engine ─────────────────────────────────────────────────────────
+function parseAA(aa) {
+  if (ESTER_DONORS.has(aa)) return 'donor';
+  if (AMIDE_DONORS.has(aa)) return 'lys';
+  if (ACCEPTORS.has(aa))    return 'acc';
+  return 'neutral';
+}
+
+function scorePair(seq, d, a, bondType) {
+  let s = 0;
+  const rs = Math.abs(a - d) + 1;
+  if (rs >= 5 && rs <= 9)  s += 3;
+  else if (rs >= 4 && rs <= 13) s += 2;
+  else s += 1;
+  const mid = (d + a) / 2, n = seq.length;
+  if (mid > n * 0.25 && mid < n * 0.88) s += 1;
+  if (mid > n * 0.40 && mid < n * 0.80) s += 1;
+  if (bondType === 'amide' && rs >= 6 && rs <= 9) s += 1.5;
+  if (bondType === 'ester') {
+    if (seq[a] === 'D') s += 0.5;
+    if (seq[d] === 'T') s += 0.5;
+  }
+  const ctx = seq.slice(Math.max(0, d-3), Math.min(n, d+4));
+  const nearD = [...ctx].filter(c => ESTER_DONORS.has(c) || AMIDE_DONORS.has(c)).length;
+  if (nearD >= 3) s += 0.5;
+  if (d < a) s += 0.25;
+  return parseFloat(Math.min(10, s).toFixed(1));
+}
+
+function generatePairs(seq) {
+  const minR = +document.getElementById('minRing').value;
+  const maxR = +document.getElementById('maxRing').value;
+  const showA = document.getElementById('showAmide').checked;
+  const showE = document.getElementById('showEster').checked;
+  const n = seq.length;
+  const pairs = [];
+  for (let d = 0; d < n; d++) {
+    const daa = seq[d];
+    const isEster = showE && ESTER_DONORS.has(daa);
+    const isAmide = showA && AMIDE_DONORS.has(daa);
+    if (!isEster && !isAmide) continue;
+    for (let a = 0; a < n; a++) {
+      if (a === d) continue;
+      const aaa = seq[a];
+      if (!ACCEPTORS.has(aaa)) continue;
+      const rs = Math.abs(a - d) + 1;
+      const bt = isAmide ? 'amide' : 'ester';
+      const maxRS = bt === 'amide' ? Math.min(maxR, 12) : maxR;
+      if (rs < minR || rs > maxRS) continue;
+      pairs.push({ d, a, daa, aaa, rs, bondType: bt, score: scorePair(seq, d, a, bt) });
+    }
+  }
+  pairs.sort((x,y) => y.score - x.score);
+  return pairs;
+}
+
+function isNonCrossing(d1,a1,d2,a2) {
+  const p1s=Math.min(d1,a1), p1e=Math.max(d1,a1);
+  const p2s=Math.min(d2,a2), p2e=Math.max(d2,a2);
+  if (p1s<p2s && p2s<p1e && p1e<p2e) return false;
+  if (p2s<p1s && p1s<p2e && p2e<p1e) return false;
+  return true;
+}
+
+function usesUniqueRes(cls) {
+  const used = new Set();
+  for (const c of cls) {
+    if (used.has(c.d) || used.has(c.a)) return false;
+    used.add(c.d); used.add(c.a);
+  }
+  return true;
+}
+
+function generateTopologies(pairs, confirmed) {
+  const maxXL = +document.getElementById('maxXL').value;
+  const nonCrossReq = document.getElementById('reqNonCross').checked;
+  // Ensure confirmed pairs are included
+  const confPairs = confirmed.map(c => {
+    const found = pairs.find(p => p.d === c.d && p.a === c.a);
+    return found || {...c, rs: Math.abs(c.a-c.d)+1, bondType: AMIDE_DONORS.has(c.daa)?'amide':'ester', score: scorePair(state.seq, c.d, c.a, AMIDE_DONORS.has(c.daa)?'amide':'ester')};
+  });
+  const topPairs = [...confPairs, ...pairs.filter(p => p.score >= 3 && !confPairs.some(c=>c.d===p.d&&c.a===p.a))].slice(0, 25);
+  const topos = [];
+  const n = topPairs.length;
+
+  function add(cls) {
+    if (!usesUniqueRes(cls)) return;
+    if (nonCrossReq) {
+      for (let i=0;i<cls.length;i++)
+        for (let j=i+1;j<cls.length;j++)
+          if (!isNonCrossing(cls[i].d,cls[i].a,cls[j].d,cls[j].a)) return;
+    }
+    const hasAllConf = confPairs.every(c => cls.some(cl => cl.d===c.d && cl.a===c.a));
+    if (!hasAllConf && confPairs.length > 0) return;
+    const score = cls.reduce((s,c) => s + c.score, 0) / cls.length;
+    const massDelta = -H2O * cls.length;
+    const topology = cls.map((c,i) => {
+      const s=Math.min(c.d,c.a), e=Math.max(c.d,c.a);
+      return i===0?'primary':'sequential/nested';
+    });
+    const topoLabel = cls.length===2 ? (() => {
+      const [c1,c2] = cls;
+      const s1=Math.min(c1.d,c1.a), e1=Math.max(c1.d,c1.a);
+      const s2=Math.min(c2.d,c2.a), e2=Math.max(c2.d,c2.a);
+      if (e1<=s2||e2<=s1) return 'sequential';
+      if (s2>s1&&e2<e1) return 'nested(1⊃2)';
+      if (s1>s2&&e1<e2) return 'nested(2⊃1)';
+      return '?';
+    })() : `${cls.length}-ring`;
+    topos.push({ crosslinks: cls, score: parseFloat(score.toFixed(1)), massDelta: parseFloat(massDelta.toFixed(3)), label: cls.map(c=>`${c.daa}${c.d+1}→${c.aaa}${c.a+1}`).join(' + '), topology: topoLabel, n: cls.length });
+  }
+
+  // Bicyclic
+  if (maxXL >= 2) {
+    for (let i=0;i<n;i++) for (let j=i+1;j<n;j++) add([topPairs[i],topPairs[j]]);
+  }
+  // Tricyclic
+  if (maxXL >= 3) {
+    for (let i=0;i<n;i++) for (let j=i+1;j<n;j++) for (let k=j+1;k<n;k++) add([topPairs[i],topPairs[j],topPairs[k]]);
+  }
+  topos.sort((a,b) => b.score-a.score);
+  return topos.slice(0, 80);
+}
+
+function predictETD(seq, crosslinks) {
+  // For each c-ion position 1..n-1:
+  // Classify as: normal, absent (backbone cut within ring), cyclic (ring boundary, -H2O)
+  const ringMap = {}; // idx -> [{ringIdx, isBoundary}]
+  crosslinks.forEach((cl, ri) => {
+    const lo = Math.min(cl.d, cl.a), hi = Math.max(cl.d, cl.a);
+    for (let p = lo+1; p <= hi; p++) {
+      if (p === hi) {
+        if (!ringMap[p]) ringMap[p] = [];
+        ringMap[p].push({ ringIdx: ri, isBoundary: true });
+      } else {
+        if (!ringMap[p]) ringMap[p] = [];
+        ringMap[p].push({ ringIdx: ri, isBoundary: false });
+      }
+    }
+  });
+
+  let cum = 0;
+  const ions = [];
+  for (let n = 1; n < seq.length; n++) {
+    cum += (MONO[seq[n-1]] || 111);
+    const base = cum + 18.034; // c-ion terminus (+H +NH3)
+    const entries = ringMap[n] || [];
+    let status = 'normal';
+    let finalMass = base;
+    for (const e of entries) {
+      if (e.isBoundary) {
+        status = e.ringIdx === 0 ? 'cyclic' : 'cyclic2';
+        finalMass = base - H2O;
+      } else if (status === 'normal') {
+        status = 'absent';
+      }
+    }
+    ions.push({ n, mass: parseFloat(finalMass.toFixed(3)), status });
+  }
+  return ions;
+}
+
+function linMass(seq) {
+  return seq.split('').reduce((s,aa) => s + (MONO[aa]||111), 0) + H2O;
+}
+
+// ── Rendering ────────────────────────────────────────────────────────────────
+function renderSeq(seq, selTopo) {
+  const svg = document.getElementById('seqSvg');
+  if (!seq) { svg.innerHTML=''; document.getElementById('seqStats').innerHTML=''; return; }
+  const N = seq.length;
+  const CW = 24, PAD = 4, yAA = 55, arcY = yAA - 10;
+  const W = N * CW + PAD * 2;
+  svg.setAttribute('width', W);
+  svg.setAttribute('viewBox', `0 0 ${W} 88`);
+  let html = '';
+
+  // Draw arcs for selected topology
+  if (selTopo) {
+    const colors = ['#0D5C63','#C24A3A','#B07A1E'];
+    selTopo.crosslinks.forEach((cl, ri) => {
+      const lo = Math.min(cl.d, cl.a), hi = Math.max(cl.d, cl.a);
+      const x1 = PAD + lo * CW + CW/2, x2 = PAD + hi * CW + CW/2;
+      const cx = (x1+x2)/2, span = x2-x1;
+      const ry = Math.max(12, span * 0.38);
+      const dash = ri > 0 ? 'stroke-dasharray="5,3"' : '';
+      html += `<path d="M${x1} ${arcY} Q${cx} ${arcY-ry} ${x2} ${arcY}" stroke="${colors[ri%colors.length]}" stroke-width="2.2" fill="none" opacity=".8" ${dash}/>`;
+    });
+  }
+
+  // Draw residues
+  seq.split('').forEach((aa, i) => {
+    const type = parseAA(aa);
+    const fills = { donor:'#DAFAF0', lys:'#FEF0D7', acc:'#FAE8E4', neutral:'#E8EAE8' };
+    const tcs   = { donor:'#085041', lys:'#633806', acc:'#4A1B0C', neutral:'#444441' };
+    const fill = fills[type], tc = tcs[type];
+    const inTopo = selTopo && selTopo.crosslinks.some(c => c.d===i||c.a===i);
+    const stroke = inTopo ? '#0D5C63' : 'none';
+    const sw = inTopo ? 2 : 0;
+    const x = PAD + i * CW, rx = x + CW/2;
+    html += `<rect x="${x+1}" y="${yAA-10}" width="${CW-2}" height="18" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    html += `<text x="${rx}" y="${yAA+4}" text-anchor="middle" font-size="10" font-family="IBM Plex Mono,monospace" font-weight="${type==='lys'?700:500}" fill="${tc}">${aa}</text>`;
+    if ((i+1)%5===0||i===0) {
+      html += `<text x="${rx}" y="${yAA+22}" text-anchor="middle" font-size="8" fill="#888780">${i+1}</text>`;
+    }
+  });
+
+  svg.innerHTML = html;
+
+  // Stats
+  const donors = seq.split('').filter(a=>ESTER_DONORS.has(a)).length;
+  const lysD = seq.split('').filter(a=>AMIDE_DONORS.has(a)).length;
+  const accs = seq.split('').filter(a=>ACCEPTORS.has(a)).length;
+  document.getElementById('seqStats').innerHTML =
+    `<span class="stat-item"><span class="dot" style="background:#DAFAF0;border:1px solid #9FE1CB;border-radius:2px"></span><strong>${donors}</strong> Ser/Thr donors</span>` +
+    `<span class="stat-item"><span class="dot" style="background:#FEF0D7;border:1px solid #FAC775;border-radius:2px"></span><strong>${lysD}</strong> Lys donors</span>` +
+    `<span class="stat-item"><span class="dot" style="background:#FAE8E4;border:1px solid #F5C4B3;border-radius:2px"></span><strong>${accs}</strong> Asp/Glu acceptors</span>` +
+    `<span class="stat-item"><strong>${state.pairs.length}</strong> valid pairs</span>` +
+    `<span class="stat-item"><strong>${state.topologies.length}</strong> topologies</span>`;
+}
+
+function renderPairs() {
+  const el = document.getElementById('pairsList');
+  let pairs = state.pairs;
+  if (state.filter !== 'all') pairs = pairs.filter(p => p.bondType === state.filter);
+  if (!pairs.length) { el.innerHTML = '<div class="empty-state">No pairs found for current settings</div>'; document.getElementById('pairsNote').textContent=''; return; }
+  el.innerHTML = pairs.slice(0,60).map((p,i) => {
+    const isConf = state.confirmed.some(c=>c.d===p.d&&c.a===p.a);
+    const isSel  = state.selPair && state.selPair.d===p.d && state.selPair.a===p.a;
+    const bdClass = p.bondType==='amide' ? 'bd-amide' : 'bd-ester';
+    const bdLabel = p.bondType==='amide' ? 'amide' : 'ester';
+    const pct = Math.round(p.score/10*100);
+    return `<div class="pair-item${isSel?' active':''}${isConf?' confirmed':''}" onclick="selectPair(${i})">
+      <div class="pair-name">${p.daa}${p.d+1}→${p.aaa}${p.a+1}</div>
+      <div class="pair-badges">
+        <span class="badge ${bdClass}">${bdLabel}</span>
+        <span class="badge bd-ring">${p.rs}-mer</span>
+        ${isConf?'<span class="confirm-tag">confirmed</span>':''}
+      </div>
+      <div class="pair-score-bar"><div class="pair-score-fill" style="width:${pct}%"></div></div>
+      <div class="pair-score-val">${p.score}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('pairsNote').textContent = pairs.length > 60 ? `Showing top 60 of ${pairs.length} pairs.` : `${pairs.length} valid pairs.`;
+}
+
+function renderTopos() {
+  const el = document.getElementById('topoList');
+  if (!state.topologies.length) { el.innerHTML='<div class="empty-state">No topologies found</div>'; document.getElementById('topoNote').textContent=''; return; }
+  el.innerHTML = state.topologies.slice(0,50).map((t,i) => {
+    const isSel = state.selTopo && state.selTopo.label===t.label;
+    return `<div class="topo-item${isSel?' active':''}" onclick="selectTopo(${i})">
+      <div class="topo-header">
+        <span class="topo-name">${t.label}</span>
+        <span class="topo-score">${t.score}/10</span>
+      </div>
+      <div class="topo-meta">
+        <span class="topo-mass">Δm = ${t.massDelta.toFixed(0)} Da</span>
+        <span class="topo-rings">${t.n} crosslinks</span>
+        <span class="topo-topo">${t.topology}</span>
+        <span>${t.crosslinks.map(c=>`${c.rs}-mer`).join(' + ')}</span>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('topoNote').textContent = state.topologies.length > 50 ? `Showing top 50 of ${state.topologies.length}.` : `${state.topologies.length} topologies.`;
+}
+
+function renderETD() {
+  const topo = state.selTopo;
+  document.getElementById('etdKey').style.display = topo ? '' : 'none';
+  if (!topo || !state.seq) {
+    document.getElementById('ionGrid').innerHTML='';
+    document.getElementById('massPanel').style.display='none';
+    document.getElementById('etdIntro').textContent='Select a topology to predict fragment masses. Cyclic boundary ions appear at −18.011 Da from the expected linear mass. Absent ions (within-ring backbone cuts) are shown faded.';
+    return;
+  }
+  document.getElementById('etdIntro').textContent=`c-ion ladder for: ${topo.label}`;
+  const ions = predictETD(state.seq, topo.crosslinks);
+  const maxShow = Math.min(ions.length, 30);
+  document.getElementById('ionGrid').innerHTML = ions.slice(0, maxShow).map(ion => {
+    const cls = {normal:'ic-normal',cyclic:'ic-cyclic',cyclic2:'ic-cyclic2',absent:'ic-absent'}[ion.status]||'ic-normal';
+    const massStr = ion.status === 'absent' ? '—' : ion.mass.toString();
+    return `<div class="ion-cell ${cls}"><div class="ion-lbl">c${ion.n}</div><div class="ion-mass">${massStr}</div></div>`;
+  }).join('');
+
+  // Mass panel
+  const M = linMass(state.seq);
+  const Mbicyclic = M + topo.massDelta;
+  const rows = [
+    ['Linear precursor (M)', M.toFixed(3)+' Da'],
+    [`${topo.n}-crosslink product`, Mbicyclic.toFixed(3)+' Da'],
+    ['Δmass', `${topo.massDelta.toFixed(3)} Da (${topo.n} × −H₂O)`],
+    [`[M${topo.massDelta<0?'':'+'}`+topo.massDelta.toFixed(0)+`+6H]⁶⁺`, ((Mbicyclic+6*1.00728)/6).toFixed(3)+' m/z'],
+    [`[M${topo.massDelta<0?'':'+'}`+topo.massDelta.toFixed(0)+`+7H]⁷⁺`, ((Mbicyclic+7*1.00728)/7).toFixed(3)+' m/z'],
+  ];
+  const cycIons = ions.filter(i=>i.status==='cyclic'||i.status==='cyclic2');
+  if (cycIons.length) {
+    rows.push(['—','—']);
+    cycIons.forEach(c => {
+      const stat = c.status==='cyclic'?'ring 1 boundary':'ring 2 boundary';
+      rows.push([`c${c.n} (${stat})`, `${c.mass} Da · [+2H]²⁺ = ${((c.mass+2*1.00728)/2).toFixed(3)}`]);
+    });
+  }
+  document.getElementById('massPanel').style.display='';
+  document.getElementById('massPanel').innerHTML = rows.map(r=>
+    r[0]==='—'?'<div style="border-top:1px solid var(--border);margin:.2rem 0"></div>':
+    `<div class="mass-row"><span class="mass-label">${r[0]}</span><span class="mass-val">${r[1]}</span></div>`
+  ).join('');
+}
+
+// ── Interactions ─────────────────────────────────────────────────────────────
+function setFilter(f) {
+  state.filter = f;
+  ['all','ester','amide'].forEach(x => document.getElementById('fb-'+x).classList.toggle('on', x===f));
+  renderPairs();
+}
+
+function selectPair(i) {
+  const pairs = state.filter==='all' ? state.pairs : state.pairs.filter(p=>p.bondType===state.filter);
+  const p = pairs[i];
+  state.selPair = (state.selPair && state.selPair.d===p.d && state.selPair.a===p.a) ? null : p;
+  renderPairs();
+}
+
+function selectTopo(i) {
+  const t = state.topologies[i];
+  state.selTopo = (state.selTopo && state.selTopo.label===t.label) ? null : t;
+  renderSeq(state.seq, state.selTopo);
+  renderTopos();
+  renderETD();
+}
+
+function addConfirmed() {
+  const raw = document.getElementById('confirmInput').value.trim();
+  if (!raw || !state.seq) return;
+  // Parse e.g. K10E4, S18D22, S18-D22, 10-4, etc.
+  const m1 = raw.match(/^([STKEDRQNACFGHILMPVWY])(\d+)([DE])(\d+)$/i);
+  const m2 = raw.match(/^(\d+)[- ]?(\d+)$/);
+  let d=-1, a=-1, daa='', aaa='';
+  if (m1) {
+    daa=m1[1].toUpperCase(); d=parseInt(m1[2])-1;
+    aaa=m1[3].toUpperCase(); a=parseInt(m1[4])-1;
+  } else if (m2) {
+    d=parseInt(m2[1])-1; a=parseInt(m2[2])-1;
+    daa=state.seq[d]||'?'; aaa=state.seq[a]||'?';
+  }
+  if (d<0||a<0||d>=state.seq.length||a>=state.seq.length) { alert('Could not parse: use format like K10E4 or S18D22'); return; }
+  if (state.confirmed.some(c=>c.d===d&&c.a===a)) return;
+  state.confirmed.push({d, a, daa: state.seq[d], aaa: state.seq[a]});
+  document.getElementById('confirmInput').value='';
+  renderConfirmed();
+  rebuild();
+}
+
+function removeConfirmed(i) {
+  state.confirmed.splice(i, 1);
+  renderConfirmed();
+  rebuild();
+}
+
+function renderConfirmed() {
+  const el = document.getElementById('confirmedTags');
+  el.innerHTML = state.confirmed.map((c,i) =>
+    `<span class="conf-tag">${c.daa}${c.d+1}→${c.aaa}${c.a+1} <span class="rm" onclick="removeConfirmed(${i})">×</span></span>`
+  ).join('');
+}
+
+function rebuild() {
+  const raw = document.getElementById('seqInput').value.replace(/[^A-Za-z]/g,'').toUpperCase();
+  state.seq = raw;
+  state.pairs = raw ? generatePairs(raw) : [];
+  state.topologies = raw ? generateTopologies(state.pairs, state.confirmed) : [];
+  state.selTopo = null;
+  state.selPair = null;
+  renderSeq(raw, null);
+  renderPairs();
+  renderTopos();
+  renderETD();
+}
+
+function exportPairs() {
+  if (!state.pairs.length) { alert('No pairs to export'); return; }
+  const header = 'donor_pos\tdonor_aa\tacceptor_pos\tacceptor_aa\tring_size\tbond_type\tscore';
+  const rows = state.pairs.map(p => `${p.d+1}\t${p.daa}\t${p.a+1}\t${p.aaa}\t${p.rs}\t${p.bondType}\t${p.score}`);
+  copyText(header + '\n' + rows.join('\n'));
+}
+
+function exportTopos() {
+  if (!state.topologies.length) { alert('No topologies to export'); return; }
+  const header = 'rank\tlabel\tscore\tn_crosslinks\tmass_delta_Da\ttopology';
+  const rows = state.topologies.slice(0,50).map((t,i) => `${i+1}\t${t.label}\t${t.score}\t${t.n}\t${t.massDelta}\t${t.topology}`);
+  copyText(header + '\n' + rows.join('\n'));
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert('Copied!');
+  });
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+const presetEl = document.getElementById('presetBtns');
+PRESETS.forEach(p => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-btn';
+  btn.textContent = p.label;
+  btn.onclick = () => {
+    document.getElementById('seqInput').value = p.seq;
+    state.confirmed = [];
+    p.confirmed.forEach(c => {
+      document.getElementById('confirmInput').value = c;
+      addConfirmed();
+    });
+    renderConfirmed();
+    rebuild();
+  };
+  presetEl.appendChild(btn);
+});
+
+document.getElementById('seqInput').addEventListener('input', rebuild);
+</script>
+</body>
+</html>
