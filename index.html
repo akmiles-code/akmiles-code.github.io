@@ -23,9 +23,7 @@
     color:#fff; border-radius:24px; padding:36px 24px 30px;
     margin:16px 0 22px; position:relative; overflow:hidden;
   }
-  .hero-top{display:flex;gap:18px;align-items:flex-start;justify-content:space-between}
-  .hero-id{flex:1;min-width:0}
-  .hero-photo{flex:0 0 auto;width:40%;max-width:200px;min-width:118px;margin:0}
+  .hero-photo{float:right;width:38%;max-width:205px;min-width:128px;margin:2px 0 14px 26px}
   .hero-photo img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:14px;
     border:2px solid rgba(255,255,255,.30);box-shadow:0 6px 18px rgba(0,0,0,.28);display:block}
   .hero-photo figcaption{margin-top:6px;font-size:10.5px;font-style:italic;color:#BFD8D4;text-align:center;line-height:1.3}
@@ -33,7 +31,7 @@
   .name{font-family:Georgia,"Times New Roman",serif;font-size:30px;font-weight:700;line-height:1.15}
   .role{margin-top:8px;font-size:16px;color:#D8ECE9}
   .role b{color:#fff}
-  .bio{margin-top:16px;font-size:14.5px;color:#E6F2F0;max-width:60ch}
+  .bio{margin-top:16px;font-size:14.5px;color:#E6F2F0}
   .bio b{color:#A7F3E4;font-weight:600}
   .tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:7px}
   .tag{font-size:11.5px;font-weight:600;color:#CFEFEA;border:1px solid rgba(167,243,228,.4);padding:4px 10px;border-radius:999px}
@@ -71,17 +69,13 @@
 <div class="wrap">
 
   <header class="hero">
-    <div class="hero-top">
-      <div class="hero-id">
-        <div class="eyebrow">Kauffman Lab · University at Buffalo</div>
-        <h1 class="name">Ashley K. Miles</h1>
-        <div class="role">PhD Candidate · <b>Oral Biology</b>, School of Dental Medicine</div>
-      </div>
-      <figure class="hero-photo">
-        <img src="ashley_tyler.jpeg" alt="Ashley Miles and Tyler at the summit of Cascade Mountain in the Adirondacks">
-        <figcaption>Summit of Cascade Mountain, Adirondacks · May 2026</figcaption>
-      </figure>
-    </div>
+    <figure class="hero-photo">
+      <img src="ashley_tyler.jpeg" alt="Ashley Miles and Tyler at the summit of Cascade Mountain in the Adirondacks">
+      <figcaption>Summit of Cascade Mountain, Adirondacks · May 2026</figcaption>
+    </figure>
+    <div class="eyebrow">Kauffman Lab · University at Buffalo</div>
+    <h1 class="name">Ashley K. Miles</h1>
+    <div class="role">PhD Candidate · <b>Oral Biology</b>, School of Dental Medicine</div>
     <p class="bio">I'm a computational and experimental biologist working across <b>microbial ecology, AI/ML-driven bioinformatics, multi-omics integration, and functional genomics</b>. I like building tools and assays that turn large-scale sequence data into testable biology — currently mapping how mobile genetic elements shape microbial chemistry in the oral microbiome, including a secreted <b>graspetide</b> protease inhibitor in <i>Porphyromonas gingivalis</i>.</p>
     <div class="tags">
       <span class="tag">Microbial ecology</span>
